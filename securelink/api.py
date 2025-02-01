@@ -1,16 +1,30 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Annotated
 from .config import config
 from . import sign
 
-# Define the FastAPI app
-app = FastAPI()
+
+bearer = HTTPBearer(scheme_name="Bearer")
+
+
+async def validate_token(
+    bearer_token: Annotated[HTTPAuthorizationCredentials, Depends(bearer)]
+):
+    if bearer_token.credentials != config.API_KEY:
+        raise HTTPException(
+            status_code=404, detail="Your Forbidden to use this service"
+        )
+
+
+app = FastAPI(dependencies=[Depends(validate_token)])
 
 
 class SecureLinkRequestBase(BaseModel):
     url: str
     clientip: Optional[str] = "127.0.0.1"
+
 
 class SecureLinkRequest(SecureLinkRequestBase):
     expire_seconds: Optional[int] = 20
